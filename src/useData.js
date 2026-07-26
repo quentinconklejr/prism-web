@@ -95,6 +95,29 @@ export function useData() {
           };
         });
 
+        // norm_pop_density and norm_energy_demand are empty in pareto_front.csv for every row.
+        // norm_grid_connectivity exists but is near-zero for nearly all counties (skewed range),
+        // making every bar render as 0%. Recompute all three from raw candidate fields.
+        const normMinMax = (arr) => {
+          const nums = arr.filter((v) => v != null && isFinite(v));
+          if (nums.length === 0) return arr.map(() => null);
+          const lo = Math.min(...nums);
+          const hi = Math.max(...nums);
+          const span = hi - lo;
+          return arr.map((v) =>
+            v == null || !isFinite(v) || span === 0 ? null : (v - lo) / span
+          );
+        };
+
+        const normPop    = normMinMax(merged.map((r) => r.population_density));
+        const normGrid   = normMinMax(merged.map((r) => r.max_voltage));
+        const normEnergy = normMinMax(merged.map((r) => r.total_energy_consumption_mwh));
+        merged.forEach((r, i) => {
+          r.norm_pop_density       = normPop[i];
+          r.norm_grid_connectivity = normGrid[i];
+          r.norm_energy_demand     = normEnergy[i];
+        });
+
         setState({
           candidates: merged,
           coalLookup,
