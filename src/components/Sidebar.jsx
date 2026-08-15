@@ -14,10 +14,44 @@ export default function Sidebar({
 
         {/* Title / brand */}
         <div className="pb-1">
-          <div className="text-[#1e3a8a] font-bold text-lg tracking-tight leading-none">PRISM</div>
-          <div className="text-slate-500 text-[12px] mt-1 leading-snug">
-            Pareto Reactor Infrastructure Siting Model
+          <div className="flex items-center gap-2.5">
+            {/* Prism glyph: triangle + incoming ray splitting into 4 dispersed output lines */}
+            <svg width="30" height="22" viewBox="0 0 38 26" fill="none" aria-hidden="true">
+              <polygon
+                points="2,2 2,24 20,13"
+                stroke="#2563eb"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+                fill="rgba(37,99,235,0.07)"
+              />
+              <line x1="0" y1="13" x2="2"  y2="13" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="20" y1="13" x2="37" y2="4"  stroke="#1e3a8a" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="20" y1="13" x2="37" y2="9"  stroke="#2563eb" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="20" y1="13" x2="37" y2="17" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="20" y1="13" x2="37" y2="22" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+
+            {/* PRISM wordmark — Space Grotesk, slate-to-blue gradient */}
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', ui-sans-serif, system-ui, sans-serif",
+                fontWeight: 700,
+                fontSize: '1.65rem',
+                letterSpacing: '0.13em',
+                lineHeight: 1,
+                background: 'linear-gradient(90deg, #1e293b 0%, #2563eb 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              PRISM
+            </span>
           </div>
+
+          <p className="text-slate-400 text-[10.5px] mt-2 leading-snug" style={{ letterSpacing: '0.05em' }}>
+            Pareto Reactor Infrastructure Siting Model
+          </p>
         </div>
 
         <Divider />
@@ -137,6 +171,7 @@ function Divider() {
 }
 
 function SliderField({ label, value, min, max, step, onChange, format, hint }) {
+  const pct = ((value - min) / (max - min)) * 100;
   return (
     <div className="space-y-1.5">
       <div className="flex justify-between items-baseline">
@@ -148,8 +183,10 @@ function SliderField({ label, value, min, max, step, onChange, format, hint }) {
         min={min} max={max} step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 rounded-full appearance-none bg-slate-200 cursor-pointer"
-        style={{ accentColor: '#2563eb' }}
+        className="prism-slider w-full cursor-pointer"
+        style={{
+          background: `linear-gradient(to right, #2563eb 0%, #2563eb ${pct}%, #e5e7eb ${pct}%, #e5e7eb 100%)`,
+        }}
       />
       {hint && <p className="text-slate-400 text-[11px] leading-snug">{hint}</p>}
     </div>

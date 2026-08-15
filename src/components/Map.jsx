@@ -5,6 +5,21 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DISPLAY_EXCLUDED = new Set(['26083','25019','25007','15005']);
 
+// FIPS → state abbreviation for the label layer (state GeoJSON has only state_fips)
+const FIPS_ABBR = ['match', ['get', 'state_fips'],
+  '01','AL', '02','AK', '04','AZ', '05','AR', '06','CA',
+  '08','CO', '09','CT', '10','DE', '11','DC', '12','FL',
+  '13','GA', '15','HI', '16','ID', '17','IL', '18','IN',
+  '19','IA', '20','KS', '21','KY', '22','LA', '23','ME',
+  '24','MD', '25','MA', '26','MI', '27','MN', '28','MS',
+  '29','MO', '30','MT', '31','NE', '32','NV', '33','NH',
+  '34','NJ', '35','NM', '36','NY', '37','NC', '38','ND',
+  '39','OH', '40','OK', '41','OR', '42','PA', '44','RI',
+  '45','SC', '46','SD', '47','TN', '48','TX', '49','UT',
+  '50','VT', '51','VA', '53','WA', '54','WV', '55','WI', '56','WY',
+  '',
+];
+
 // Wide sequential scale: #f0f4ff (near-white periwinkle) → #1e3a5f (deep navy)
 function scoreToColor(score, min, max) {
   if (score == null) return 'rgba(0,0,0,0)';
@@ -99,13 +114,18 @@ export default function Map({
         try { if (map.getLayer(lyr)) map.setLayoutProperty(lyr, 'visibility', 'none'); } catch (_) {}
       });
 
+      // Find first basemap label layer so our data layers insert below it
+      const firstLabelId = map.getStyle().layers.find(
+        (l) => l.type === 'symbol' && l.id && l.id.includes('label')
+      )?.id;
+
       // Background county fill — warm gray for filtered-out counties
       map.addLayer({
         id: 'county-bg',
         type: 'fill',
         source: 'counties',
         paint: { 'fill-color': '#f0eeeb', 'fill-opacity': 0.88 },
-      });
+      }, firstLabelId);
 
       // Subtle county borders in background
       map.addLayer({
@@ -113,7 +133,7 @@ export default function Map({
         type: 'line',
         source: 'counties',
         paint: { 'line-color': '#e0e0e0', 'line-width': 0.5 },
-      });
+      }, firstLabelId);
 
       // Scored county fills — colors set dynamically
       map.addLayer({
@@ -121,7 +141,7 @@ export default function Map({
         type: 'fill',
         source: 'counties',
         paint: { 'fill-color': '#e2e8f0', 'fill-opacity': 0 },
-      });
+      }, firstLabelId);
 
       // Coal overlay (violet border)
       map.addLayer({
@@ -130,7 +150,7 @@ export default function Map({
         source: 'counties',
         filter: ['in', ['get', 'GEOID'], ['literal', []]],
         paint: { 'line-color': '#7c3aed', 'line-width': 2.0, 'line-opacity': 0.85 },
-      });
+      }, firstLabelId);
 
       // Pareto outline — subtle amber/gold
       map.addLayer({
@@ -139,7 +159,7 @@ export default function Map({
         source: 'counties',
         filter: ['in', ['get', 'GEOID'], ['literal', []]],
         paint: { 'line-color': '#d4a843', 'line-width': 1, 'line-opacity': 0.6 },
-      });
+      }, firstLabelId);
 
       // Selected county — white halo for contrast against any fill color
       map.addLayer({
@@ -148,7 +168,7 @@ export default function Map({
         source: 'counties',
         filter: ['==', ['get', 'GEOID'], ''],
         paint: { 'line-color': '#ffffff', 'line-width': 6, 'line-opacity': 0.85 },
-      });
+      }, firstLabelId);
 
       // Selected county — blue ring on top of halo
       map.addLayer({
@@ -157,7 +177,7 @@ export default function Map({
         source: 'counties',
         filter: ['==', ['get', 'GEOID'], ''],
         paint: { 'line-color': '#2563eb', 'line-width': 3 },
-      });
+      }, firstLabelId);
 
       // State borders — dark slate, visually dominant on light map
       map.addLayer({
@@ -165,6 +185,30 @@ export default function Map({
         type: 'line',
         source: 'states',
         paint: { 'line-color': '#475569', 'line-width': 1.2, 'line-opacity': 0.75 },
+      }, firstLabelId);
+
+      // State name labels — added last so they render above all fill layers
+      map.addLayer({
+        id: 'state-labels-custom',
+        type: 'symbol',
+        source: 'states',
+        minzoom: 2,
+        layout: {
+          'text-field': FIPS_ABBR,
+          'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
+          'text-size': ['interpolate', ['linear'], ['zoom'], 3, 9, 5, 11, 7, 14],
+          'text-transform': 'uppercase',
+          'text-letter-spacing': 0.08,
+          'text-max-width': 6,
+          'symbol-spacing': 400,
+        },
+        paint: {
+          'text-color': '#374151',
+          'text-halo-color': 'rgba(255,255,255,0.9)',
+          'text-halo-width': 1.5,
+          // fade out as zoom increases — city labels take over
+          'text-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.85, 6, 1.0, 7.5, 0.4, 8.5, 0],
+        },
       });
 
       // Hover popup

@@ -40,7 +40,43 @@ html, body, #root {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-/* Slider thumb */
-input[type="range"] {
-  accent-color: #2563eb;
+/* Custom range slider — blue fill track */
+.prism-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  border: none;
+}
+.prism-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.prism-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.prism-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.prism-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2563eb;
+  cursor: pointer;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
