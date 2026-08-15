@@ -20,15 +20,19 @@ const FIPS_ABBR = ['match', ['get', 'state_fips'],
   '',
 ];
 
-// Wide sequential scale: #f0f4ff (near-white periwinkle) → #1e3a5f (deep navy)
-function scoreToColor(score, min, max) {
-  if (score == null) return 'rgba(0,0,0,0)';
-  const t = max === min ? 0.5 : Math.max(0, Math.min(1, (score - min) / (max - min)));
-  const r = Math.round(240 - t * 210);  // 240 → 30
-  const g = Math.round(244 - t * 186);  // 244 → 58
-  const b = Math.round(255 - t * 160);  // 255 → 95
-  return `rgb(${r},${g},${b})`;
-}
+// ColorBrewer YlGn 6-class — perceptually uniform, colorblind-safe.
+// Low score (worst site) → pale yellow, high score (best site) → deep green.
+const YLGN_STOPS = [
+  '#ffffcc',
+  '#d9f0a3',
+  '#addd8e',
+  '#78c679',
+  '#31a354',
+  '#006837',
+];
+
+// Neutral light gray for counties with no score (filtered out / no data)
+const NO_DATA_COLOR = '#f0f0f0';
 
 function prepareCountyGeo(raw) {
   return {
@@ -119,12 +123,12 @@ export default function Map({
         (l) => l.type === 'symbol' && l.id && l.id.includes('label')
       )?.id;
 
-      // Background county fill — warm gray for filtered-out counties
+      // Background county fill — neutral light gray for filtered-out / no-data counties
       map.addLayer({
         id: 'county-bg',
         type: 'fill',
         source: 'counties',
-        paint: { 'fill-color': '#f0eeeb', 'fill-opacity': 0.88 },
+        paint: { 'fill-color': NO_DATA_COLOR, 'fill-opacity': 0.9 },
       }, firstLabelId);
 
       // Subtle county borders in background
@@ -273,21 +277,41 @@ export default function Map({
 
 function applyPaint(map, activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid) {
   try {
+    // Clear stale per-feature scores from previous filter / mode
+    map.removeFeatureState({ source: 'counties' });
+
+    // Compute score range from currently-active rows (max visual contrast under filter)
     const scores = activeRows.map((r) => r[scoreCol]).filter((v) => v != null);
     const mn = scores.length ? Math.min(...scores) : 0;
     const mx = scores.length ? Math.max(...scores) : 1;
+    const range = Math.max(mx - mn, 1e-9);
 
-    const matchArgs = ['match', ['get', 'GEOID']];
+    // Attach each active county's score (with optional coal bump) to feature-state.
+    // The fill-color expression then reads feature-state.score via interpolate.
     activeRows.forEach((r) => {
-      const raw = r[scoreCol] ?? null;
-      const display = showCoal && r.has_coal_plant && raw != null
-        ? Math.min(raw + 0.05, 1.0) : raw;
-      matchArgs.push(r.geoid, scoreToColor(display, mn, mx));
+      const raw = r[scoreCol];
+      if (raw == null) return;
+      const bumped = showCoal && r.has_coal_plant
+        ? Math.min(raw + 0.05, 1.0)
+        : raw;
+      map.setFeatureState({ source: 'counties', id: r.geoid }, { score: bumped });
     });
-    matchArgs.push('#f0eeeb'); // warm gray for counties outside active filter
 
-    map.setPaintProperty('county-scored', 'fill-color', matchArgs);
-    map.setPaintProperty('county-scored', 'fill-opacity', 0.82);
+    // Interpolate the YlGn ramp across 6 evenly-spaced stops from mn → mx.
+    // Counties without a feature-state score render fully transparent (revealing county-bg).
+    const scoreExpr = ['feature-state', 'score'];
+    map.setPaintProperty('county-scored', 'fill-color', [
+      'interpolate', ['linear'], scoreExpr,
+      mn,                 YLGN_STOPS[0],
+      mn + range * 0.2,   YLGN_STOPS[1],
+      mn + range * 0.4,   YLGN_STOPS[2],
+      mn + range * 0.6,   YLGN_STOPS[3],
+      mn + range * 0.8,   YLGN_STOPS[4],
+      mn + range,         YLGN_STOPS[5],
+    ]);
+    map.setPaintProperty('county-scored', 'fill-opacity', [
+      'case', ['!=', scoreExpr, null], 0.85, 0,
+    ]);
 
     const paretoIds = reactorMode === 'LWR'
       ? activeRows.filter((r) => r.on_nsga2_pareto).map((r) => r.geoid)
