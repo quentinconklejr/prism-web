@@ -299,9 +299,10 @@ function applyPaint(map, activeRows, scoreCol, showCoal, coalLookup, reactorMode
 
     // Interpolate the YlGn ramp across 6 evenly-spaced stops from mn → mx.
     // Counties without a feature-state score render fully transparent (revealing county-bg).
-    const scoreExpr = ['feature-state', 'score'];
+    const scoreExpr = ['number', ['feature-state', 'score'], -1];
     map.setPaintProperty('county-scored', 'fill-color', [
       'interpolate', ['linear'], scoreExpr,
+      -1,                 NO_DATA_COLOR,
       mn,                 YLGN_STOPS[0],
       mn + range * 0.2,   YLGN_STOPS[1],
       mn + range * 0.4,   YLGN_STOPS[2],
@@ -309,9 +310,7 @@ function applyPaint(map, activeRows, scoreCol, showCoal, coalLookup, reactorMode
       mn + range * 0.8,   YLGN_STOPS[4],
       mn + range,         YLGN_STOPS[5],
     ]);
-    map.setPaintProperty('county-scored', 'fill-opacity', [
-      'case', ['!=', scoreExpr, null], 0.85, 0,
-    ]);
+    map.setPaintProperty('county-scored', 'fill-opacity', 0.85);
 
     const paretoIds = reactorMode === 'LWR'
       ? activeRows.filter((r) => r.on_nsga2_pareto).map((r) => r.geoid)

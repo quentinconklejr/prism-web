@@ -13,7 +13,7 @@ export default function CandidatesTable({
     if (!activeRows.length) return [];
     const sorted = [...activeRows].sort((a, b) => {
       if (reactorMode === 'LWR' && !showCoal) {
-        return (a.rank ?? Infinity) - (b.rank ?? Infinity);
+        return (a.rank > 0 ? a.rank : Infinity) - (b.rank > 0 ? b.rank : Infinity);
       }
       return (b[scoreCol] ?? -Infinity) - (a[scoreCol] ?? -Infinity);
     });
@@ -113,7 +113,7 @@ export default function CandidatesTable({
                 >
                   {isLwr && (
                     <Td className={`text-slate-500 font-mono ${isSelected ? 'text-blue-700' : ''}`}>
-                      {row.rank != null ? `#${parseInt(row.rank)}` : '—'}
+                      {row.rank > 0 ? `#${parseInt(row.rank)}` : '—'}
                     </Td>
                   )}
                   <Td className={`font-medium max-w-[140px] truncate ${isSelected ? 'text-blue-900' : 'text-slate-800'}`}>

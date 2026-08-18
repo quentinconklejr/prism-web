@@ -95,6 +95,14 @@ export function useData() {
           };
         });
 
+        // Drop unscored rows (territories, CT planning regions) where rank/mcda_score are 0 or missing.
+        const before = merged.length;
+        const scoreable = merged.filter(
+          (r) => Number.isFinite(r.rank) && r.rank > 0 &&
+                 Number.isFinite(r.mcda_score) && r.mcda_score > 0
+        );
+        console.log(`[PRISM] Dropped ${before - scoreable.length} unscored rows (${scoreable.length} remain)`);
+
         // norm_pop_density and norm_energy_demand are empty in pareto_front.csv for every row.
         // norm_grid_connectivity exists but is near-zero for nearly all counties (skewed range),
         // making every bar render as 0%. Recompute all three from raw candidate fields.
@@ -109,17 +117,17 @@ export function useData() {
           );
         };
 
-        const normPop    = normMinMax(merged.map((r) => r.population_density));
-        const normGrid   = normMinMax(merged.map((r) => r.max_voltage));
-        const normEnergy = normMinMax(merged.map((r) => r.total_energy_consumption_mwh));
-        merged.forEach((r, i) => {
+        const normPop    = normMinMax(scoreable.map((r) => r.population_density));
+        const normGrid   = normMinMax(scoreable.map((r) => r.max_voltage));
+        const normEnergy = normMinMax(scoreable.map((r) => r.total_energy_consumption_mwh));
+        scoreable.forEach((r, i) => {
           r.norm_pop_density       = normPop[i];
           r.norm_grid_connectivity = normGrid[i];
           r.norm_energy_demand     = normEnergy[i];
         });
 
         setState({
-          candidates: merged,
+          candidates: scoreable,
           coalLookup,
           stateGeojson: stateGeo,
           countyGeojson: countyGeo,

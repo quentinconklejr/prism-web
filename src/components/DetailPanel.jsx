@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import ExplanationPanel from './ExplanationPanel';
 
 const NORM_COLS = [
   'norm_seismic_risk','norm_flood_risk','norm_pop_density',
@@ -138,6 +139,8 @@ export default function DetailPanel({ row, reactorMode, rankMax, coalLookup }) {
             </>
           )}
         </div>
+
+        <ExplanationPanel countyId={row.geoid} />
 
         {/* Per-criterion bars */}
         {barVals && (

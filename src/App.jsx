@@ -143,6 +143,10 @@ export default function App() {
                 style={{ background: 'linear-gradient(to right, #ffffcc, #d9f0a3, #addd8e, #78c679, #31a354, #006837)' }} />
               <span>Score (low → high)</span>
             </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-10 h-2.5 rounded" style={{ background: '#f0f0f0' }} />
+              <span>No data</span>
+            </div>
             {reactorMode === 'LWR' && (
               <div className="flex items-center gap-2">
                 <span className="inline-block w-4 border-t-2 border-amber-500" />
