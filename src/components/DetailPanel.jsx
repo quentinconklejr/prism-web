@@ -32,12 +32,12 @@ export default function DetailPanel({ row, reactorMode, rankMax, coalLookup }) {
 
   if (!row) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-slate-400 text-[13px] gap-3 px-5 bg-white">
+      <div className="flex flex-col items-center justify-center h-full text-slate-500 text-[13px] gap-3 px-5 bg-white">
         <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
         </svg>
         <p className="text-center font-medium text-slate-500">Click a county on the map to view its profile.</p>
-        <p className="text-[12px] text-slate-400 text-center leading-snug">
+        <p className="text-[12px] text-slate-500 text-center leading-snug">
           Darker blue = higher score. Amber outlines mark Pareto-front sites (★).
         </p>
       </div>
@@ -193,7 +193,7 @@ export default function DetailPanel({ row, reactorMode, rankMax, coalLookup }) {
               <Bullet label={COST_LAYER_LABEL}>
                 {row.location_factor.toFixed(3)} — {fmtVsBaseline(row.location_factor)} (1.00)
               </Bullet>
-              <p className="text-[11px] leading-snug text-slate-400 pt-0.5">
+              <p className="text-[11px] leading-snug text-slate-500 pt-0.5">
                 State-level construction labor adjustment (EIA/S&amp;L 2023, SL-018001 Rev A,
                 App. A). Applied to the {fmtPerKw(CAPEX_PER_KW_BASE)}/kW SMR overnight capital cost from Case 10
                 ({PLANT_NET_MW} MW net). Reflects craft wage rates and labor productivity only —
@@ -246,13 +246,13 @@ function ScoreCard({ label, value, sub, accent }) {
         ? 'bg-blue-50 border-blue-200'
         : 'bg-slate-50 border-slate-200'
     }`}>
-      <div className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">{label}</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold">{label}</div>
       <div className={`text-[17px] font-bold leading-tight mt-0.5 ${
         accent ? 'text-blue-700' : 'text-slate-800'
       }`}>
         {value}
       </div>
-      {sub && <div className="text-[10px] text-slate-400 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10px] text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
 }

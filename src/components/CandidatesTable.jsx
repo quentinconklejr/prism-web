@@ -51,7 +51,7 @@ export default function CandidatesTable({
 
   if (!activeRows.length) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-400 text-[13px] p-4">
+      <div className="flex items-center justify-center h-full text-slate-500 text-[13px] p-4">
         No counties match the current filters.
       </div>
     );
@@ -62,13 +62,13 @@ export default function CandidatesTable({
   return (
     <div className="flex flex-col h-full min-h-0 bg-white">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-50 shrink-0">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-200 bg-slate-50 shrink-0">
         <span className="text-[13px] font-semibold text-slate-600">
           Top 20 Candidates
         </span>
         <button
           onClick={downloadCsv}
-          className="text-[12px] text-blue-600 hover:text-blue-800 font-medium border border-blue-200 hover:border-blue-400 bg-white rounded-md px-2.5 py-1 transition-colors shadow-sm"
+          className="text-[12px] text-blue-700 hover:text-blue-900 font-medium border border-blue-200 hover:border-blue-400 bg-white rounded-md px-2.5 py-1 transition-colors shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           ↓ Export CSV
         </button>
@@ -102,8 +102,18 @@ export default function CandidatesTable({
               return (
                 <tr
                   key={row.geoid}
+                  tabIndex={0}
+                  role="button"
+                  aria-pressed={isSelected}
+                  aria-label={`${row.county_name}, ${row.state}`}
                   onClick={() => onSelectGeoid(row.geoid)}
-                  className={`cursor-pointer border-b border-slate-100 transition-colors ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectGeoid(row.geoid);
+                    }
+                  }}
+                  className={`cursor-pointer border-b border-slate-100 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 ${
                     isSelected
                       ? 'bg-blue-50 border-blue-200'
                       : isEven
@@ -151,7 +161,7 @@ export default function CandidatesTable({
 
       {/* Footer note */}
       {isLwr && (
-        <div className="px-4 py-1.5 text-[11px] text-slate-400 border-t border-slate-100 bg-slate-50 shrink-0">
+        <div className="px-4 py-1.5 text-[11px] text-slate-500 border-t border-slate-100 bg-slate-50 shrink-0 [@media(max-height:820px)]:hidden">
           ★ Pareto-front counties — non-dominated across all 6 criteria, outlined in amber on the map.
         </div>
       )}

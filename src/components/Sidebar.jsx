@@ -9,12 +9,45 @@ export default function Sidebar({
   showCoal, setShowCoal,
   mapLayer, setMapLayer,
   costWeight, setCostWeight,
+  open, onClose,
 }) {
   const pgaMax = reactorMode !== 'LWR' ? 0.50 : 0.30;
 
   return (
-    <aside className="w-[290px] shrink-0 bg-[#f8f9fa] border-r border-slate-200 overflow-y-auto flex flex-col">
-      <div className="px-5 py-5 space-y-6">
+    <>
+      {/* Scrim, only below lg where the sidebar is an overlay */}
+      {open && (
+        <button
+          type="button"
+          aria-label="Close filters"
+          onClick={onClose}
+          className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
+        />
+      )}
+
+      <aside
+        aria-label="Controls"
+        className={`
+          bg-[#f8f9fa] border-r border-slate-200 overflow-y-auto flex flex-col
+          fixed inset-y-0 left-0 z-50 w-[290px] max-w-[85vw] shadow-xl prism-drawer
+          ${open ? 'translate-x-0' : '-translate-x-full'}
+          lg:static lg:z-auto lg:translate-x-0 lg:shadow-none lg:shrink-0
+          lg:w-[262px] xl:w-[290px]
+        `}
+      >
+      <div className="px-5 py-5 space-y-6 [@media(max-height:800px)]:py-3.5 [@media(max-height:800px)]:space-y-4">
+
+        {/* Close control, overlay only */}
+        <div className="lg:hidden flex justify-end -mb-3">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close filters"
+            className="px-2.5 py-1.5 text-slate-500 hover:text-slate-800 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            ✕
+          </button>
+        </div>
 
         {/* Title / brand */}
         <div className="pb-1">
@@ -53,7 +86,7 @@ export default function Sidebar({
             </span>
           </div>
 
-          <p className="text-slate-400 text-[10.5px] mt-2 leading-snug" style={{ letterSpacing: '0.05em' }}>
+          <p className="text-slate-500 text-[10.5px] mt-2 leading-snug" style={{ letterSpacing: '0.05em' }}>
             Pareto Reactor Infrastructure Siting Model
           </p>
         </div>
@@ -209,13 +242,14 @@ export default function Sidebar({
           <p className="text-slate-500 text-[12px] leading-snug">
             County-level siting analysis built on NRC Regulatory Guide 4.7. NSGA-II was used to find the Pareto front across all six criteria.
           </p>
-          <p className="text-slate-400 text-[11px] leading-snug pt-1">
+          <p className="text-slate-500 text-[11px] leading-snug pt-1">
             For planning and research use only. Not an NRC license application or official suitability determination.
           </p>
         </section>
 
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -244,12 +278,13 @@ function SliderField({ label, value, min, max, step, onChange, format, hint }) {
         min={min} max={max} step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="prism-slider w-full cursor-pointer"
+        aria-label={label}
+        className="prism-slider w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600"
         style={{
           background: `linear-gradient(to right, #2563eb 0%, #2563eb ${pct}%, #e5e7eb ${pct}%, #e5e7eb 100%)`,
         }}
       />
-      {hint && <p className="text-slate-400 text-[11px] leading-snug">{hint}</p>}
+      {hint && <p className="text-slate-500 text-[11px] leading-snug">{hint}</p>}
     </div>
   );
 }
@@ -262,15 +297,15 @@ function Toggle({ label, hint, checked, onChange }) {
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
+          className="sr-only peer"
         />
         <div
-          className={`w-9 h-5 rounded-full transition-colors duration-200 ${
-            checked ? 'bg-blue-600' : 'bg-slate-300'
+          className={`w-9 h-5 rounded-full prism-transition peer-focus-visible:ring-2 peer-focus-visible:ring-blue-600 peer-focus-visible:ring-offset-2 ${
+            checked ? 'bg-blue-600' : 'bg-slate-400'
           }`}
         />
         <div
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow prism-transition pointer-events-none ${
             checked ? 'translate-x-4' : ''
           }`}
         />
@@ -279,7 +314,7 @@ function Toggle({ label, hint, checked, onChange }) {
         <p className={`text-[13px] font-medium leading-tight ${checked ? 'text-slate-800' : 'text-slate-700'}`}>
           {label}
         </p>
-        {hint && <p className="text-slate-400 text-[11px] mt-0.5 leading-snug">{hint}</p>}
+        {hint && <p className="text-slate-500 text-[11px] mt-0.5 leading-snug">{hint}</p>}
       </div>
     </label>
   );

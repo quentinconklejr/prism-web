@@ -88,13 +88,23 @@ export default function Map({
 
     const prepared = prepareCountyGeo(countyGeojson);
 
+    // Zoom 3.5 frames the lower 48 in a ~1150px-wide container. Below that the
+    // container is narrower, and holding 3.5 crops both coasts off the map — on a
+    // phone you saw the Plains and nothing else. Scale the initial zoom with the
+    // container's width; anything 1100px and wider keeps the existing framing
+    // exactly, so the desktop view is unchanged.
+    const containerWidth = containerRef.current?.clientWidth ?? 1150;
+    const initialZoom = containerWidth >= 1100
+      ? 3.5
+      : Math.max(2.1, 3.5 + Math.log2(containerWidth / 1000));
+
     let map;
     try {
       map = new mapboxgl.Map({
         container: containerRef.current,
         style: 'mapbox://styles/mapbox/light-v11',
         center: [-96, 39.5],
-        zoom: 3.5,
+        zoom: initialZoom,
         projection: 'mercator',
       });
     } catch (err) {

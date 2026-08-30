@@ -12,6 +12,37 @@ html, body, #root {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Nothing should scroll sideways at any width. */
+html, body {
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* Sidebar drawer slide (below lg only; it is a static column at lg and up). */
+.prism-drawer { transition: transform 240ms ease; }
+.prism-transition { transition: background-color 200ms ease, transform 200ms ease; }
+.prism-spinner { animation: prism-spin 0.8s linear infinite; }
+@keyframes prism-spin { to { transform: rotate(360deg); } }
+
+/*
+  Respect prefers-reduced-motion. Panels still open and close, they just do it
+  instantly instead of sliding, and the loading spinner stops rotating.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Keyboard focus is always visible, including on elements with custom styling. */
+:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
 /* Mapbox popup — light theme */
 .mapboxgl-popup-content {
   background: #ffffff;
@@ -58,6 +89,10 @@ html, body, #root {
   height: 6px;
   border-radius: 9999px;
   background: transparent;
+}
+.prism-slider:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 4px;
 }
 .prism-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
