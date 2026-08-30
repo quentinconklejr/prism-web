@@ -28,10 +28,11 @@ export function useData() {
   useEffect(() => {
     async function load() {
       try {
-        const [candidates, paretoRaw, coalRaw, stateGeo, countyGeo] = await Promise.all([
+        const [candidates, paretoRaw, coalRaw, costRaw, stateGeo, countyGeo] = await Promise.all([
           parseCsv('/data/candidates_ranked.csv'),
           parseCsv('/data/pareto_front.csv'),
           parseCsv('/data/coal_counties.csv'),
+          parseCsv('/data/county_costs.csv'),
           fetch('/data/state_boundaries_cartographic.geojson').then((r) => r.json()),
           fetch('https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json').then((r) => r.json()),
         ]);
@@ -52,6 +53,20 @@ export function useData() {
         coalRaw.forEach((r) => {
           const g = normGeoid(r.geoid);
           coalLookup[g] = { ...r, geoid: g };
+        });
+
+        // Construction labor cost index + derived capex, from step5_cost.py.
+        // Keyed on the same zero-padded geoid as everything else — both source
+        // CSVs store geo_id as an integer, so 131 counties in states 01-09 arrive
+        // with the leading zero stripped.
+        const costLookup = {};
+        costRaw.forEach((r) => {
+          const g = normGeoid(r.geo_id);
+          costLookup[g] = {
+            location_factor:  r.location_factor  ?? null,
+            est_capex_per_kw: r.est_capex_per_kw ?? null,
+            est_total_capex:  r.est_total_capex  ?? null,
+          };
         });
 
         // FIPS → state abbrev (same as Python app)
@@ -91,6 +106,9 @@ export function useData() {
             on_both_fronts: toBool(p.on_both_fronts),
             has_coal_plant: !!coalLookup[r.geoid],
             coal_capacity_mw: coalLookup[r.geoid]?.coal_capacity_mw ?? 0,
+            location_factor:  costLookup[r.geoid]?.location_factor  ?? null,
+            est_capex_per_kw: costLookup[r.geoid]?.est_capex_per_kw ?? null,
+            est_total_capex:  costLookup[r.geoid]?.est_total_capex  ?? null,
             ...NORM_COLS.reduce((acc, c) => { acc[c] = p[c] ?? null; return acc; }, {}),
           };
         });

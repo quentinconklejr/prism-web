@@ -1,5 +1,9 @@
 import { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
+import {
+  COST_RAMP, COST_SCALE_MIN, COST_SCALE_MAX,
+  CAPEX_PER_KW_BASE, fmtPerKw, fmtTotalCapex, fmtVsBaseline,
+} from '../cost';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -53,6 +57,7 @@ export default function Map({
   activeRows,
   reactorMode,
   scoreCol,
+  mapLayer,
   showCoal,
   coalLookup,
   selectedGeoid,
@@ -69,12 +74,14 @@ export default function Map({
   const showCoalRef   = useRef(showCoal);
   const coalRef       = useRef(coalLookup);
   const selectedRef   = useRef(selectedGeoid);
+  const layerRef      = useRef(mapLayer);
   activeRef.current   = activeRows;
   scoreColRef.current = scoreCol;
   reactorRef.current  = reactorMode;
   showCoalRef.current = showCoal;
   coalRef.current     = coalLookup;
   selectedRef.current = selectedGeoid;
+  layerRef.current    = mapLayer;
 
   useEffect(() => {
     if (!countyGeojson || !stateGeojson || mapRef.current) return;
@@ -230,16 +237,23 @@ export default function Map({
         const pareto  = row.on_nsga2_pareto && mode === 'LWR'
           ? `<br/><span style="color:#d97706;font-weight:600">★ Pareto-Optimal</span>` : '';
 
-        popupRef.current
-          .setLngLat(e.lngLat)
-          .setHTML(
-            `<span style="font-weight:600;color:#1e293b">${row.county_name}, ${row.state}</span><br/>` +
-            `${label}: <b>${row[sc]?.toFixed(3) ?? 'N/A'}</b><br/>` +
+        const head = `<span style="font-weight:600;color:#1e293b">${row.county_name}, ${row.state}</span><br/>`;
+
+        const body = layerRef.current === 'cost'
+          ? (row.est_capex_per_kw == null
+              ? `<span style="color:#64748b">No cost data — outside the source report's coverage.</span>`
+              : `Est. capital cost: <b>${fmtPerKw(row.est_capex_per_kw)}/kW</b><br/>` +
+                `Est. total (480 MW): <b>${fmtTotalCapex(row.est_total_capex)}</b><br/>` +
+                `<span style="color:#64748b">Labor index ${row.location_factor.toFixed(3)} — ${fmtVsBaseline(row.location_factor)}</span><br/>` +
+                `${label}: ${row[sc]?.toFixed(3) ?? 'N/A'}`)
+          : `${label}: <b>${row[sc]?.toFixed(3) ?? 'N/A'}</b><br/>` +
             `Seismic: ${(row.pga_max ?? 0).toFixed(3)} g<br/>` +
             `Flood: ${((row.pct_sfha ?? 0) * 100).toFixed(1)}% SFHA<br/>` +
-            `Pop: ${(row.population_density ?? 0).toFixed(1)} /km²` +
-            pareto + coalMw
-          )
+            `Pop: ${(row.population_density ?? 0).toFixed(1)} /km²`;
+
+        popupRef.current
+          .setLngLat(e.lngLat)
+          .setHTML(head + body + pareto + coalMw)
           .addTo(map);
         map.getCanvas().style.cursor = 'pointer';
       });
@@ -260,7 +274,7 @@ export default function Map({
       });
 
       readyRef.current = true;
-      applyPaint(map, activeRef.current, scoreColRef.current, showCoalRef.current, coalRef.current, reactorRef.current, selectedRef.current);
+      applyPaint(map, activeRef.current, scoreColRef.current, showCoalRef.current, coalRef.current, reactorRef.current, selectedRef.current, layerRef.current);
     });
 
     return () => { map.remove(); mapRef.current = null; readyRef.current = false; };
@@ -269,46 +283,64 @@ export default function Map({
 
   useEffect(() => {
     if (!mapRef.current || !readyRef.current) return;
-    applyPaint(mapRef.current, activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid);
-  }, [activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid]);
+    applyPaint(mapRef.current, activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid, mapLayer);
+  }, [activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid, mapLayer]);
 
   return <div ref={containerRef} className="w-full h-full" />;
 }
 
-function applyPaint(map, activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid) {
+function applyPaint(map, activeRows, scoreCol, showCoal, coalLookup, reactorMode, selectedGeoid, mapLayer) {
   try {
     // Clear stale per-feature scores from previous filter / mode
     map.removeFeatureState({ source: 'counties' });
 
-    // Compute score range from currently-active rows (max visual contrast under filter)
-    const scores = activeRows.map((r) => r[scoreCol]).filter((v) => v != null);
-    const mn = scores.length ? Math.min(...scores) : 0;
-    const mx = scores.length ? Math.max(...scores) : 1;
+    const isCost = mapLayer === 'cost';
+
+    // Suitability rescales to the current filter for maximum visual contrast.
+    // Cost uses FIXED bounds instead, so a county's colour means the same thing
+    // no matter what the filters are set to — the whole point of the layer is
+    // comparing absolute build cost between places.
+    let mn, mx, ramp;
+    if (isCost) {
+      mn   = CAPEX_PER_KW_BASE * COST_SCALE_MIN;
+      mx   = CAPEX_PER_KW_BASE * COST_SCALE_MAX;
+      ramp = COST_RAMP;
+    } else {
+      const scores = activeRows.map((r) => r[scoreCol]).filter((v) => v != null);
+      mn   = scores.length ? Math.min(...scores) : 0;
+      mx   = scores.length ? Math.max(...scores) : 1;
+      ramp = YLGN_STOPS;
+    }
     const range = Math.max(mx - mn, 1e-9);
 
-    // Attach each active county's score (with optional coal bump) to feature-state.
-    // The fill-color expression then reads feature-state.score via interpolate.
+    // Attach each active county's value to feature-state. Counties with no value
+    // are simply never given one, so they fall through the interpolate default
+    // below to NO_DATA_COLOR — the same path already used for counties outside
+    // the candidate set. There is deliberately no second no-data mechanism.
     activeRows.forEach((r) => {
-      const raw = r[scoreCol];
-      if (raw == null) return;
-      const bumped = showCoal && r.has_coal_plant
-        ? Math.min(raw + 0.05, 1.0)
-        : raw;
-      map.setFeatureState({ source: 'counties', id: r.geoid }, { score: bumped });
+      let raw;
+      if (isCost) {
+        raw = r.est_capex_per_kw;
+      } else {
+        raw = r[scoreCol];
+        if (raw != null && showCoal && r.has_coal_plant) raw = Math.min(raw + 0.05, 1.0);
+      }
+      if (raw == null || !isFinite(raw)) return;
+      map.setFeatureState({ source: 'counties', id: r.geoid }, { score: raw });
     });
 
-    // Interpolate the YlGn ramp across 6 evenly-spaced stops from mn → mx.
-    // Counties without a feature-state score render fully transparent (revealing county-bg).
+    // Interpolate the active ramp across 6 evenly-spaced stops from mn → mx.
+    // The -1 sentinel below mn catches every county with no feature-state value.
     const scoreExpr = ['number', ['feature-state', 'score'], -1];
     map.setPaintProperty('county-scored', 'fill-color', [
       'interpolate', ['linear'], scoreExpr,
       -1,                 NO_DATA_COLOR,
-      mn,                 YLGN_STOPS[0],
-      mn + range * 0.2,   YLGN_STOPS[1],
-      mn + range * 0.4,   YLGN_STOPS[2],
-      mn + range * 0.6,   YLGN_STOPS[3],
-      mn + range * 0.8,   YLGN_STOPS[4],
-      mn + range,         YLGN_STOPS[5],
+      mn,                 ramp[0],
+      mn + range * 0.2,   ramp[1],
+      mn + range * 0.4,   ramp[2],
+      mn + range * 0.6,   ramp[3],
+      mn + range * 0.8,   ramp[4],
+      mn + range,         ramp[5],
     ]);
     map.setPaintProperty('county-scored', 'fill-opacity', 0.85);
 

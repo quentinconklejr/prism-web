@@ -1,5 +1,9 @@
 import { useMemo } from 'react';
 import ExplanationPanel from './ExplanationPanel';
+import {
+  PLANT_NET_MW, COST_LAYER_LABEL, CAPEX_PER_KW_BASE,
+  fmtPerKw, fmtTotalCapex, fmtVsBaseline,
+} from '../cost';
 
 const NORM_COLS = [
   'norm_seismic_risk','norm_flood_risk','norm_pop_density',
@@ -171,6 +175,36 @@ export default function DetailPanel({ row, reactorMode, rankMax, coalLookup }) {
           {energyStr && <Bullet label="Energy Demand">{energyStr}</Bullet>}
           {row.data_centers_count > 0 && (
             <Bullet label="Data Centers">{parseInt(row.data_centers_count)} (high baseload demand)</Bullet>
+          )}
+        </div>
+
+        {/* Construction cost — a parallel axis, never folded into the score above */}
+        <div className="space-y-1">
+          <SectionHeader>Estimated Construction Cost</SectionHeader>
+          {row.est_capex_per_kw != null ? (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <ScoreCard label="Est. $/kW" value={fmtPerKw(row.est_capex_per_kw)} />
+                <ScoreCard
+                  label={`Est. total (${PLANT_NET_MW} MW)`}
+                  value={fmtTotalCapex(row.est_total_capex)}
+                />
+              </div>
+              <Bullet label={COST_LAYER_LABEL}>
+                {row.location_factor.toFixed(3)} — {fmtVsBaseline(row.location_factor)} (1.00)
+              </Bullet>
+              <p className="text-[11px] leading-snug text-slate-400 pt-0.5">
+                State-level construction labor adjustment (EIA/S&amp;L 2023, SL-018001 Rev A,
+                App. A). Applied to the {fmtPerKw(CAPEX_PER_KW_BASE)}/kW SMR overnight capital cost from Case 10
+                ({PLANT_NET_MW} MW net). Reflects craft wage rates and labor productivity only —
+                it does not include seismic or environmental cost factors, which are scored
+                separately. Not included in the suitability score.
+              </p>
+            </>
+          ) : (
+            <p className="text-[12px] leading-snug text-slate-500">
+              No cost estimate — this county is outside the coverage of the source report.
+            </p>
           )}
         </div>
 

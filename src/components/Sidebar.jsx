@@ -1,3 +1,5 @@
+import { COST_SCALE_MIN, COST_SCALE_MAX } from '../cost';
+
 export default function Sidebar({
   reactorMode, setReactorMode,
   pgaFilter, setPgaFilter,
@@ -5,6 +7,8 @@ export default function Sidebar({
   popFilter, setPopFilter,
   paretoOnly, setParetoOnly,
   showCoal, setShowCoal,
+  mapLayer, setMapLayer,
+  costWeight, setCostWeight,
 }) {
   const pgaMax = reactorMode !== 'LWR' ? 0.50 : 0.30;
 
@@ -79,6 +83,39 @@ export default function Sidebar({
 
         <Divider />
 
+        {/* Map layer */}
+        <section className="space-y-2">
+          <SectionLabel>Map Layer</SectionLabel>
+          <div role="radiogroup" aria-label="Map layer" className="grid grid-cols-2 gap-1 p-0.5 bg-slate-200/70 rounded-md">
+            {[
+              ['suitability', 'Suitability'],
+              ['cost',        'Build cost'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                aria-checked={mapLayer === key}
+                onClick={() => setMapLayer(key)}
+                className={`text-[12px] font-medium rounded px-2 py-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                  mapLayer === key
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-slate-500 text-[12px] leading-snug">
+            {mapLayer === 'cost'
+              ? 'Estimated capital cost to build here. Separate axis from suitability — a cheap county is not necessarily a good site.'
+              : 'Composite siting suitability. Cost is not part of this score.'}
+          </p>
+        </section>
+
+        <Divider />
+
         {/* Filters */}
         <section className="space-y-4">
           <SectionLabel>Site Filters</SectionLabel>
@@ -129,6 +166,30 @@ export default function Sidebar({
             Pareto filtering is only available in LWR mode. The Pareto front was computed under LWR criteria.
           </p>
         )}
+
+        <Divider />
+
+        {/* Optional cost weight — defaults to 0 so the baseline ranking stays a
+            pure suitability ranking and any cost influence is a deliberate act. */}
+        <section className="space-y-2">
+          <SectionLabel>Cost Weight (optional)</SectionLabel>
+          <SliderField
+            label="Blend cost into score"
+            value={costWeight}
+            min={0} max={50} step={5}
+            onChange={setCostWeight}
+            format={(v) => v.toFixed(0) + '%'}
+            hint={costWeight === 0
+              ? `Off. Ranking is pure suitability. Scaled against a fixed ${COST_SCALE_MIN.toFixed(2)}–${COST_SCALE_MAX.toFixed(2)} index range, not the observed spread.`
+              : `${costWeight}% of the score now comes from cheap construction labor. Rankings below are no longer a pure suitability ranking.`}
+          />
+          {costWeight > 0 && (
+            <p className="text-[11px] leading-snug text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+              Cost is state-constant, so this shifts whole states against each other and
+              cannot re-order counties within a state.
+            </p>
+          )}
+        </section>
 
         <Divider />
 

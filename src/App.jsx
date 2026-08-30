@@ -6,9 +6,12 @@ import MetricsBar from './components/MetricsBar';
 import Map from './components/Map';
 import DetailPanel from './components/DetailPanel';
 import CandidatesTable from './components/CandidatesTable';
+import { COST_RAMP, costScore } from './cost';
 
 export default function App() {
   const [reactorMode, setReactorMode]   = useState('LWR');
+  const [mapLayer,    setMapLayer]      = useState('suitability');
+  const [costWeight,  setCostWeight]    = useState(0);   // percent; 0 = pure suitability
   const [pgaFilter,   setPgaFilter]     = useState(0.30);
   const [sfhaFilter,  setSfhaFilter]    = useState(20);
   const [popFilter,   setPopFilter]     = useState(10000);
@@ -39,14 +42,34 @@ export default function App() {
     return rows;
   }, [candidates, pgaFilter, sfhaFilter, popFilter, paretoOnly, reactorMode]);
 
-  const activeRows = useMemo(() => {
+  const modeRows = useMemo(() => {
     if (reactorMode === 'LWR') return filtered;
     const scored = computeSmrScores(filtered, reactorMode);
     return scored.filter((r) => r.smr_score != null);
   }, [filtered, reactorMode]);
 
-  const scoreCol   = reactorMode === 'LWR' ? 'mcda_score' : 'smr_score';
-  const scoreLabel = reactorMode === 'LWR'
+  const baseScoreCol = reactorMode === 'LWR' ? 'mcda_score' : 'smr_score';
+
+  // Optional cost blend. At the default weight of 0 this is a no-op and the rows
+  // pass through untouched, so the baseline ranking is exactly what it was before
+  // the cost layer existed. Counties with no cost data drop out of the blended
+  // view rather than being imputed — there is no honest way to blend a number we
+  // do not have.
+  const activeRows = useMemo(() => {
+    if (costWeight === 0) return modeRows;
+    const w = costWeight / 100;
+    return modeRows.flatMap((r) => {
+      const base = r[baseScoreCol];
+      const cs   = costScore(r.location_factor);
+      if (base == null || cs == null) return [];
+      return [{ ...r, blended_score: (1 - w) * base + w * cs }];
+    });
+  }, [modeRows, costWeight, baseScoreCol]);
+
+  const scoreCol   = costWeight > 0 ? 'blended_score' : baseScoreCol;
+  const scoreLabel = costWeight > 0
+    ? `Blended (${costWeight}% cost)`
+    : reactorMode === 'LWR'
     ? (showCoal ? 'MCDA (+coal)' : 'MCDA Score')
     : (showCoal ? 'SMR (+coal)'  : 'SMR Score');
 
@@ -93,6 +116,8 @@ export default function App() {
         popFilter={popFilter}       setPopFilter={setPopFilter}
         paretoOnly={paretoOnly}     setParetoOnly={setParetoOnly}
         showCoal={showCoal}         setShowCoal={setShowCoal}
+        mapLayer={mapLayer}         setMapLayer={setMapLayer}
+        costWeight={costWeight}     setCostWeight={setCostWeight}
       />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -125,6 +150,7 @@ export default function App() {
               activeRows={activeRows}
               reactorMode={reactorMode}
               scoreCol={scoreCol}
+              mapLayer={mapLayer}
               showCoal={showCoal}
               coalLookup={coalLookup}
               selectedGeoid={selectedGeoid}
@@ -140,8 +166,10 @@ export default function App() {
           <div className="absolute bottom-4 left-4 bg-white/95 border border-slate-200 rounded-lg px-3 py-2.5 text-[11px] text-slate-600 space-y-1.5 pointer-events-none shadow-sm">
             <div className="flex items-center gap-2">
               <span className="inline-block w-10 h-2.5 rounded"
-                style={{ background: 'linear-gradient(to right, #ffffcc, #d9f0a3, #addd8e, #78c679, #31a354, #006837)' }} />
-              <span>Score (low → high)</span>
+                style={{ background: mapLayer === 'cost'
+                  ? `linear-gradient(to right, ${COST_RAMP.join(', ')})`
+                  : 'linear-gradient(to right, #ffffcc, #d9f0a3, #addd8e, #78c679, #31a354, #006837)' }} />
+              <span>{mapLayer === 'cost' ? 'Est. $/kW (low → high)' : 'Score (low → high)'}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="inline-block w-10 h-2.5 rounded" style={{ background: '#f0f0f0' }} />
