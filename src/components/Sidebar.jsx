@@ -89,6 +89,14 @@ export default function Sidebar({
           <p className="text-slate-500 text-[10.5px] mt-2 leading-snug" style={{ letterSpacing: '0.05em' }}>
             Pareto Reactor Infrastructure Siting Model
           </p>
+
+          <a
+            href="/illinois"
+            className="mt-3 flex items-center justify-between gap-2 text-[12px] font-medium text-blue-800 bg-blue-50 border border-blue-200 hover:border-blue-400 rounded-md px-2.5 py-1.5"
+          >
+            Illinois data center rules
+            <span aria-hidden="true">→</span>
+          </a>
         </div>
 
         <Divider />
