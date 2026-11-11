@@ -10,7 +10,6 @@ import {
 export default function IllinoisPage() {
   const [rows, setRows] = useState(null);
   const [counties, setCounties] = useState(null);
-  const [cityLocations, setCityLocations] = useState(() => new Map());
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -34,15 +33,9 @@ export default function IllinoisPage() {
       .catch((e) => setError(String(e.message ?? e)));
   }, []);
 
-  // City dots fill in once geocoding answers; the map and table do not wait.
-  useEffect(() => {
-    if (!rows || !counties) return;
-    const ctrl = new AbortController();
-    const byKey = new Map(counties.map((c) => [c.key, c]));
-    locateCities(rows, byKey, import.meta.env.VITE_MAPBOX_TOKEN, ctrl.signal)
-      .then(setCityLocations)
-      .catch((e) => { if (e.name !== 'AbortError') console.error('[PRISM] city lookup failed', e); });
-    return () => ctrl.abort();
+  const cityLocations = useMemo(() => {
+    if (!rows || !counties) return new Map();
+    return locateCities(rows, new Map(counties.map((c) => [c.key, c])));
   }, [rows, counties]);
 
   const summary = useMemo(() => {
@@ -114,6 +107,7 @@ export default function IllinoisPage() {
 
               <aside className="space-y-5">
                 <SignupForm />
+                <SiteScreenBox />
                 <section className="bg-white border border-slate-200 rounded-lg shadow-sm p-4 text-[13px] text-slate-600 leading-snug space-y-2">
                   <h2 className="text-[14px] font-semibold text-slate-800">Reading the map</h2>
                   <p>
@@ -139,6 +133,28 @@ export default function IllinoisPage() {
         Compiled from the local news and government sources linked in each row.
       </footer>
     </div>
+  );
+}
+
+const SITE_SCREEN_MAILTO = `mailto:quentin@prismsiting.com?subject=${encodeURIComponent('Site screen request')}`;
+
+function SiteScreenBox() {
+  return (
+    <section aria-labelledby="site-screen-heading" className="bg-blue-50 border border-blue-200 rounded-lg shadow-sm p-4">
+      <h2 id="site-screen-heading" className="text-[14px] font-semibold text-slate-800 leading-snug">
+        Need to know if a specific site can host a data center?
+      </h2>
+      <p className="mt-1 text-[13px] text-slate-600 leading-snug">
+        PRISM Siting screens individual parcels: the rules that apply, buildable acres after setbacks,
+        and distance to power.
+      </p>
+      <a
+        href={SITE_SCREEN_MAILTO}
+        className="mt-3 inline-block text-[13px] font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md px-3 py-1.5 shadow-sm"
+      >
+        Request a site screen
+      </a>
+    </section>
   );
 }
 

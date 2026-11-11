@@ -264,7 +264,7 @@ export default function RulesMap({ counties, rows, cityLocations }) {
     return () => { ro.disconnect(); map.remove(); mapRef.current = null; readyRef.current = false; };
   }, []);
 
-  // Data changes (city geocodes arriving) update the sources in place.
+  // Data changes update the sources in place.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;

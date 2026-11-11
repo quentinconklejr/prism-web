@@ -83,8 +83,8 @@ export function parseRules(text) {
       isCounty: (r.jurisdiction_type ?? '').toLowerCase() === 'county',
       countyKey: countyKey(r.county),
       sources: pairSources(r.source_outlets ?? '', r.source_urls ?? ''),
-      // Optional columns. When a city row has them, the dot goes exactly there
-      // and no geocoding happens for it.
+      // City, village and town dots are placed from these. A row without them
+      // falls back to its county's centre.
       lat: num(r.lat ?? r.latitude),
       lon: num(r.lon ?? r.lng ?? r.longitude),
     }));
@@ -145,7 +145,7 @@ function ringArea(ring) {
 }
 
 // Area-weighted centroid of the largest polygon's outer ring. Used to label a
-// county and as the fallback spot for a city dot that cannot be geocoded.
+// county and as the fallback spot for a city dot with no lat/lon.
 export function centroid(geometry) {
   const polys = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
   const ring = polys
@@ -163,43 +163,18 @@ export function centroid(geometry) {
 
 /* ---------- City locations ---------- */
 
-const IL_BBOX = [-91.52, 36.97, -87.01, 42.51];
-
-// Mapbox forward geocode, kept to Illinois places. Prefers the hit whose county
-// matches the CSV's county column, so "Normal" lands in McLean, not anywhere
-// else. Returns null when nothing plausible comes back.
-async function geocodePlace(name, county, token, signal) {
-  const params = new URLSearchParams({
-    q: `${name}, Illinois`,
-    country: 'us',
-    types: 'place,locality',
-    bbox: IL_BBOX.join(','),
-    limit: '5',
-    access_token: token,
-  });
-  const res = await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params}`, { signal });
-  if (!res.ok) return null;
-  const hits = ((await res.json()).features ?? [])
-    .filter((f) => f.properties?.context?.region?.region_code === 'IL');
-  const want = countyKey(county);
-  const best = hits.find((f) => countyKey(f.properties.context.district?.name) === want) ?? null;
-  return best?.geometry?.coordinates ?? null;
-}
-
-// Resolves a [lon, lat] for every non-county row: CSV lat/lon if given, else
-// geocoded, else the county's centroid (flagged approximate).
-export async function locateCities(rows, countyByKey, token, signal) {
-  const cities = rows.filter((r) => !r.isCounty);
-  const out = await Promise.all(cities.map(async (r) => {
-    if (r.lat != null && r.lon != null) return [r.id, { coords: [r.lon, r.lat], approx: false }];
-    let coords = null;
-    if (token) {
-      try { coords = await geocodePlace(r.jurisdiction, r.county, token, signal); }
-      catch (e) { if (e.name === 'AbortError') throw e; }
+// A [lon, lat] for every non-county row, straight from the CSV's lat/lon
+// columns. A row missing them (or with a typo that fails to parse) still gets a
+// dot, at its county's centre, and the popup says the spot is approximate.
+export function locateCities(rows, countyByKey) {
+  const out = new Map();
+  rows.filter((r) => !r.isCounty).forEach((r) => {
+    if (r.lat != null && r.lon != null) {
+      out.set(r.id, { coords: [r.lon, r.lat], approx: false });
+      return;
     }
-    if (coords) return [r.id, { coords, approx: false }];
-    const c = countyByKey.get(countyKey(r.county));
-    return [r.id, c ? { coords: c.center, approx: true } : null];
-  }));
-  return new Map(out.filter(([, v]) => v));
+    const c = countyByKey.get(r.countyKey);
+    if (c) out.set(r.id, { coords: c.center, approx: true });
+  });
+  return out;
 }

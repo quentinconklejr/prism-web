@@ -205,6 +205,12 @@ export default function App() {
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <a
+              href="/illinois"
+              className="text-[12px] font-medium text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5 shadow-sm hover:border-blue-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              Illinois
+            </a>
             <BarButton onClick={() => setFiltersOpen(true)} expanded={filtersOpen}>Filters</BarButton>
             <BarButton
               onClick={() => { setSheetTab('table'); setSheetOpen(true); }}
